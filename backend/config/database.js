@@ -2,11 +2,11 @@ const { Pool } = require('pg');
 
 // Configuración de la base de datos
 const dbConfig = {
-  user: process.env.POSTGRES_USER || 'postgres',
+  user: process.env.POSTGRES_USER || 'postgres.tlivzslgmjvfiufknhbd',
   host: process.env.POSTGRES_HOST || 'localhost',
   database: process.env.DB_NAME || 'db_bestia',
   password: process.env.POSTGRES_PASSWORD || 'password',
-  port: process.env.DB_PORT || 5432,
+  port: process.env.DB_PORT || 6543,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   max: 20, // máximo de conexiones en el pool
   idleTimeoutMillis: 30000,
