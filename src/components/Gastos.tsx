@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,14 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Plus, CreditCard, Calendar } from "lucide-react";
 
-const mockGastos = [
-  { id: 1, fecha: "2024-01-15", tipo: "insumos", descripcion: "Compra de pan y carne", monto: 15000, categoria: "Insumos" },
-  { id: 2, fecha: "2024-01-14", tipo: "fijo", descripcion: "Pago de luz", monto: 8500, categoria: "Servicios" },
-  { id: 3, fecha: "2024-01-14", tipo: "insumos", descripcion: "Verduras y condimentos", monto: 7200, categoria: "Insumos" },
-  { id: 4, fecha: "2024-01-13", tipo: "fijo", descripcion: "Recarga de garrafa", monto: 3500, categoria: "Gas" },
-  { id: 5, fecha: "2024-01-12", tipo: "insumos", descripcion: "Bebidas y papas", monto: 12000, categoria: "Insumos" },
-];
-
 const tiposGasto = [
   { value: "insumos", label: "Insumos", color: "bg-warning" },
   { value: "fijo", label: "Gastos Fijos", color: "bg-info" },
@@ -24,32 +16,69 @@ const tiposGasto = [
 ];
 
 export function Gastos() {
+  const API_URL = import.meta.env.VITE_API_URL;
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [gastos, setGastos] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [nuevoGasto, setNuevoGasto] = useState({
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: new Date().toISOString().split("T")[0],
     tipo: "",
     descripcion: "",
     monto: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const fetchGastos = async () => {
+      try {
+        const res = await fetch(`${API_URL}/gastos`);
+        const data = await res.json();
+        if (data.success) {
+          setGastos(data.data);
+        }
+      } catch (error) {
+        console.error("Error al cargar gastos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGastos();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Nuevo gasto:", nuevoGasto);
-    setMostrarFormulario(false);
-    setNuevoGasto({
-      fecha: new Date().toISOString().split('T')[0],
-      tipo: "",
-      descripcion: "",
-      monto: ""
-    });
+    try {
+      const res = await fetch(`${API_URL}/gastos`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...nuevoGasto,
+          tipo_gasto_id: tiposGasto.find((t) => t.value === nuevoGasto.tipo)?.value || "otros",
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setGastos([{ ...nuevoGasto, id: data.data.id }, ...gastos]);
+        setMostrarFormulario(false);
+        setNuevoGasto({
+          fecha: new Date().toISOString().split("T")[0],
+          tipo: "",
+          descripcion: "",
+          monto: ""
+        });
+      }
+    } catch (error) {
+      console.error("Error al guardar gasto:", error);
+    }
   };
 
-  const totalGastos = mockGastos.reduce((sum, gasto) => sum + gasto.monto, 0);
+  const totalGastos = gastos.reduce((sum, gasto) => sum + gasto.monto, 0);
   const gastosPorTipo = tiposGasto.map(tipo => ({
     ...tipo,
-    total: mockGastos
-      .filter(gasto => gasto.tipo === tipo.value)
-      .reduce((sum, gasto) => sum + gasto.monto, 0)
+    total: gastos.filter(gasto => gasto.tipo === tipo.value).reduce((sum, gasto) => sum + gasto.monto, 0)
   }));
 
   return (
@@ -75,7 +104,7 @@ export function Gastos() {
             </div>
           </CardContent>
         </Card>
-        
+
         {gastosPorTipo.slice(0, 3).map((tipo) => (
           <Card key={tipo.value} className="bg-gradient-to-br from-card to-card/80">
             <CardContent className="p-4">
@@ -103,14 +132,14 @@ export function Gastos() {
                     id="fecha"
                     type="date"
                     value={nuevoGasto.fecha}
-                    onChange={(e) => setNuevoGasto({...nuevoGasto, fecha: e.target.value})}
+                    onChange={(e) => setNuevoGasto({ ...nuevoGasto, fecha: e.target.value })}
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="tipo">Tipo de Gasto</Label>
-                  <Select value={nuevoGasto.tipo} onValueChange={(value) => setNuevoGasto({...nuevoGasto, tipo: value})}>
+                  <Select value={nuevoGasto.tipo} onValueChange={(value) => setNuevoGasto({ ...nuevoGasto, tipo: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar tipo" />
                     </SelectTrigger>
@@ -129,7 +158,7 @@ export function Gastos() {
                   <Textarea
                     id="descripcion"
                     value={nuevoGasto.descripcion}
-                    onChange={(e) => setNuevoGasto({...nuevoGasto, descripcion: e.target.value})}
+                    onChange={(e) => setNuevoGasto({ ...nuevoGasto, descripcion: e.target.value })}
                     placeholder="Detalle del gasto (ej: Compra de carne para la semana)"
                     required
                   />
@@ -143,7 +172,7 @@ export function Gastos() {
                     min="0"
                     step="100"
                     value={nuevoGasto.monto}
-                    onChange={(e) => setNuevoGasto({...nuevoGasto, monto: e.target.value})}
+                    onChange={(e) => setNuevoGasto({ ...nuevoGasto, monto: e.target.value })}
                     placeholder="15000"
                     required
                   />
@@ -170,42 +199,48 @@ export function Gastos() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-2">Fecha</th>
-                  <th className="text-left py-2">Tipo</th>
-                  <th className="text-left py-2">Descripción</th>
-                  <th className="text-left py-2">Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockGastos.map((gasto) => {
-                  const tipoInfo = tiposGasto.find(t => t.value === gasto.tipo);
-                  return (
-                    <tr key={gasto.id} className="border-b border-border/50">
-                      <td className="py-3 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          {gasto.fecha}
-                        </div>
-                      </td>
-                      <td className="py-3 text-sm">
-                        <Badge variant="secondary">
-                          {tipoInfo?.label}
-                        </Badge>
-                      </td>
-                      <td className="py-3 text-sm">{gasto.descripcion}</td>
-                      <td className="py-3 text-sm font-semibold text-destructive">
-                        -${gasto.monto.toLocaleString()}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          {loading ? (
+            <p className="text-muted-foreground">Cargando gastos...</p>
+          ) : gastos.length === 0 ? (
+            <p className="text-muted-foreground">No hay gastos registrados aún.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2">Fecha</th>
+                    <th className="text-left py-2">Tipo</th>
+                    <th className="text-left py-2">Descripción</th>
+                    <th className="text-left py-2">Monto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gastos.map((gasto) => {
+                    const tipoInfo = tiposGasto.find(t => t.value === gasto.tipo || gasto.tipoGasto);
+                    return (
+                      <tr key={gasto.id} className="border-b border-border/50">
+                        <td className="py-3 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            {gasto.fecha}
+                          </div>
+                        </td>
+                        <td className="py-3 text-sm">
+                          <Badge variant="secondary">
+                            {tipoInfo?.label || gasto.tipoGasto}
+                          </Badge>
+                        </td>
+                        <td className="py-3 text-sm">{gasto.descripcion}</td>
+                        <td className="py-3 text-sm font-semibold text-destructive">
+                          -${parseFloat(gasto.monto).toLocaleString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
